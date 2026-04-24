@@ -1,68 +1,62 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const mongoose = require('mongoose');
 
-const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  role: String
+});
 
-const initDb = () => {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            // Users table for auth
-            db.run(`CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE,
-                password TEXT,
-                role TEXT
-            )`);
+const studentSchema = new mongoose.Schema({
+  roll_no: { type: String, unique: true },
+  name: String,
+  father_name: String,
+  mother_name: String,
+  address: String,
+  mobile: String,
+  email: String,
+  gender: String,
+  dob: String,
+  reg_no: String,
+  category: String,
+  religion: String,
+  caste: String
+});
 
-            // Students details
-            db.run(`CREATE TABLE IF NOT EXISTS students (
-                roll_no TEXT PRIMARY KEY,
-                name TEXT,
-                father_name TEXT,
-                mother_name TEXT,
-                address TEXT,
-                mobile TEXT,
-                email TEXT,
-                gender TEXT,
-                dob TEXT,
-                reg_no TEXT,
-                category TEXT,
-                religion TEXT,
-                caste TEXT
-            )`);
+const attendanceSchema = new mongoose.Schema({
+  roll_no: { type: String, unique: true },
+  total_lectures: Number,
+  attended_lectures: Number,
+  percentage: Number
+});
 
-            // Attendance summary
-            db.run(`CREATE TABLE IF NOT EXISTS attendance (
-                roll_no TEXT PRIMARY KEY,
-                total_lectures INTEGER,
-                attended_lectures INTEGER,
-                percentage REAL,
-                FOREIGN KEY(roll_no) REFERENCES students(roll_no)
-            )`);
+const feesSchema = new mongoose.Schema({
+  roll_no: { type: String, unique: true },
+  sem1: String,
+  sem2: String,
+  sem3: String,
+  sem4: String,
+  category: String
+});
 
-            // Fees
-            db.run(`CREATE TABLE IF NOT EXISTS fees (
-                roll_no TEXT PRIMARY KEY,
-                sem1 TEXT,
-                sem2 TEXT,
-                sem3 TEXT,
-                sem4 TEXT,
-                category TEXT,
-                FOREIGN KEY(roll_no) REFERENCES students(roll_no)
-            )`, (err) => {
-                if (err) reject(err);
-                else {
-                    // Insert default admin user
-                    db.run(`INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)`, 
-                        ['admin2024', 'admin2024', 'admin'], (insertErr) => {
-                        if (insertErr) console.error('Error inserting admin user:', insertErr);
-                        resolve();
-                    });
-                }
-            });
-        });
-    });
+const User = mongoose.model('User', userSchema);
+const Student = mongoose.model('Student', studentSchema);
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+const Fees = mongoose.model('Fees', feesSchema);
+
+const initDb = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/student-portal');
+    console.log('Connected to MongoDB');
+
+    // Insert default admin user if not exists
+    const adminExists = await User.findOne({ username: 'admin2024' });
+    if (!adminExists) {
+      await User.create({ username: 'admin2024', password: 'admin2024', role: 'admin' });
+      console.log('Admin user created');
+    }
+  } catch (err) {
+    console.error('Database connection error:', err);
+  }
 };
 
-module.exports = { db, initDb };
+module.exports = { User, Student, Attendance, Fees, initDb };
